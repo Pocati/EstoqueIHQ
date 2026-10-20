@@ -1,0 +1,75 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Reagent {
+  id                 String   @id @default(uuid())
+  name               String   // Obrigatório: Nome do reagente (ex: Ki-67, CK7)
+  clone              String   // Obrigatório: Clone (ex: MIB-1, SP52)
+  code               String?  // Código de catálogo (exibido na planilha de pedido)
+  manufacturer       String   @default("Dako / Agilent") // "Dako / Agilent" | "Roche" | "Outro"
+  volume             String?  // Volume (ex: "6 mL", "50 testes")
+  unit               String   @default("ML") // ML | TESTS | VIAL
+  monthlyConsumption Float    @default(0)    // Média de consumo mensal
+  minStock3Months    Float    @default(0)    // Calculado: monthlyConsumption * 3
+  currentStock       Float    @default(0)    // Saldo atual para ajuste rápido (+ / -)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  batches            Batch[]
+  orders             Order[]
+
+  @@index([name, manufacturer])
+  @@map("reagents")
+}
+
+model Batch {
+  id              String     @id @default(uuid())
+  reagentId       String
+  lotNumber       String
+  expirationDate  DateTime
+  initialQuantity Float
+  currentQuantity Float
+  isActive        Boolean    @default(true)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  reagent         Reagent    @relation(fields: [reagentId], references: [id], onDelete: Cascade)
+  movements       Movement[]
+
+  @@map("batches")
+}
+
+model Movement {
+  id        String   @id @default(uuid())
+  batchId   String
+  type      String
+  quantity  Float
+  notes     String?
+  createdAt DateTime @default(now())
+
+  batch     Batch    @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  @@map("movements")
+}
+
+model Order {
+  id                String    @id @default(uuid())
+  reagentId         String
+  suggestedQuantity Float
+  orderedQuantity   Float
+  status            String    @default("PENDING")
+  supplierNotes     String?
+  createdAt         DateTime  @default(now())
+  receivedAt        DateTime?
+  updatedAt         DateTime  @updatedAt
+
+  reagent           Reagent   @relation(fields: [reagentId], references: [id], onDelete: Cascade)
+
+  @@map("orders")
+}
