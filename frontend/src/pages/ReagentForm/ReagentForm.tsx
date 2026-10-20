@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
 import { CreateReagentPayload, UnitMeasure } from '../../types/ihq.types';
 
@@ -13,6 +13,8 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
   onCreateReagent,
   onNavigateToStock,
 }) => {
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
   const [name, setName] = useState('');
   const [clone, setClone] = useState('');
   const [code, setCode] = useState('');
@@ -26,6 +28,19 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
+
+  const resetFormFields = () => {
+    setName('');
+    setClone('');
+    setCode('');
+    setManufacturer('Dako / Agilent');
+    setVolumeValue('');
+    setUnit('ML');
+    setMonthlyConsumption('');
+    setCurrentStock('');
+    setErrors({});
+    nameInputRef.current?.focus();
+  };
 
   const validate = (): boolean => {
     const nextErrors: { name?: string; clone?: string } = {};
@@ -64,17 +79,11 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
       setSubmitting(true);
       await onCreateReagent(payload);
       setSavedFeedback(`${payload.name} (${payload.clone})`);
-      setName('');
-      setClone('');
-      setCode('');
-      setVolumeValue('');
-      setMonthlyConsumption('');
-      setCurrentStock('');
-      setErrors({});
+      resetFormFields();
     } catch (err: any) {
       setApiError(
         err.message ||
-          'Erro ao salvar no banco de dados. Verifique se a tabela reagents foi criada no SQL Editor do Supabase.'
+          'Erro ao salvar no banco de dados. Verifique as permissões da tabela no Supabase.'
       );
     } finally {
       setSubmitting(false);
@@ -98,7 +107,7 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
         {savedFeedback && (
           <SuccessBanner>
             <span>
-              ✅ <strong>{savedFeedback}</strong> cadastrado!
+              ✅ <strong>{savedFeedback}</strong> cadastrado com sucesso! O formulário foi limpo para o próximo item.
             </span>
             <BannerAction type="button" onClick={onNavigateToStock}>
               Ver no Estoque →
@@ -112,6 +121,7 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
           <FieldGroup>
             <Label htmlFor="name">Nome do Reagente *</Label>
             <Input
+              ref={nameInputRef}
               id="name"
               placeholder="Ex: Ki-67, CK7, HER2"
               value={name}
@@ -277,6 +287,7 @@ const SuccessBanner = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 0.75rem;
 `;
 
 const ErrorBanner = styled.div`
@@ -298,6 +309,7 @@ const BannerAction = styled.button`
   font-weight: 700;
   font-size: 0.82rem;
   cursor: pointer;
+  white-space: nowrap;
 `;
 
 const Grid2Cols = styled.div`

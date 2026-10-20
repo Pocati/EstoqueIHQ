@@ -50,6 +50,16 @@ export const InventoryList: React.FC<InventoryListProps> = ({
     );
   };
 
+  const handleDecreaseStock = (item: ReagentItem) => {
+    if (item.currentStock <= 0) return;
+    const confirmed = window.confirm(
+      `Confirmar o descarte / baixa de 1 unidade do reagente "${item.name}" (${item.clone})?`
+    );
+    if (confirmed) {
+      onAdjustStock(item.id, -1);
+    }
+  };
+
   const renderSpreadsheet = (title: string, items: ReagentItem[], showManufacturerCol: boolean) => {
     const filtered = filterBySearch(items);
 
@@ -107,24 +117,28 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                         <SymbolBtn
                           type="button"
                           $type="minus"
-                          title="Diminuir 1"
-                          onClick={() => onAdjustStock(item.id, -1)}
+                          title="Dar baixa / descartar 1 unidade"
+                          onClick={() => handleDecreaseStock(item)}
                         >
                           −
                         </SymbolBtn>
                         <SymbolBtn
                           type="button"
                           $type="plus"
-                          title="Adicionar 1"
+                          title="Adicionar 1 unidade"
                           onClick={() => onAdjustStock(item.id, 1)}
                         >
                           +
                         </SymbolBtn>
                         <DeleteBtn
                           type="button"
-                          title="Excluir reagente"
+                          title="Excluir reagente do cadastro"
                           onClick={() => {
-                            if (window.confirm(`Deseja excluir ${item.name} (${item.clone})?`)) {
+                            if (
+                              window.confirm(
+                                `Deseja excluir permanentemente o reagente "${item.name}" (${item.clone}) da lista?`
+                              )
+                            ) {
                               onDeleteReagent(item.id);
                             }
                           }}
