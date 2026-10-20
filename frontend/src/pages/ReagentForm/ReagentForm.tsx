@@ -25,6 +25,7 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
   const [errors, setErrors] = useState<{ name?: string; clone?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   const validate = (): boolean => {
     const nextErrors: { name?: string; clone?: string } = {};
@@ -41,6 +42,7 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavedFeedback(null);
+    setApiError(null);
 
     if (!validate()) return;
 
@@ -69,6 +71,11 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
       setMonthlyConsumption('');
       setCurrentStock('');
       setErrors({});
+    } catch (err: any) {
+      setApiError(
+        err.message ||
+          'Erro ao salvar no banco de dados. Verifique se a tabela reagents foi criada no SQL Editor do Supabase.'
+      );
     } finally {
       setSubmitting(false);
     }
@@ -98,6 +105,8 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
             </BannerAction>
           </SuccessBanner>
         )}
+
+        {apiError && <ErrorBanner>⚠️ {apiError}</ErrorBanner>}
 
         <Grid2Cols>
           <FieldGroup>
@@ -268,6 +277,16 @@ const SuccessBanner = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+`;
+
+const ErrorBanner = styled.div`
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  padding: 0.85rem 1.1rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
 `;
 
 const BannerAction = styled.button`
