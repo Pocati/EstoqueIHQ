@@ -1,29 +1,21 @@
 {
-  "name": "ihq-estoque-backend",
+  "name": "ihq-estoque-app",
+  "private": true,
   "version": "1.0.0",
-  "description": "API RESTful para Controle de Estoque de Laboratório de Imunoistoquímica (IHQ)",
-  "main": "dist/server.js",
+  "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
-    "build": "cd ../frontend && npm install && npm run build && rm -rf ../backend/dist && cp -r dist ../backend/dist",
-    "start": "node dist/server.js",
-    "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev --name init",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "dev": "cd ../frontend && npm run dev",
+    "build": "cd ../frontend && npm install && npm run build && rm -rf ../backend/dist && cp -r dist ../backend/dist"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.21.1",
-    "zod": "^3.23.8"
+    "@supabase/supabase-js": "^2.46.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "styled-components": "^6.1.13"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.9.0",
-    "prisma": "^5.22.0",
-    "tsx": "^4.19.2",
-    "typescript": "^5.6.3"
+    "@vitejs/plugin-react": "^4.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10"
   }
 }
