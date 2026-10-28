@@ -85,7 +85,7 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
     try {
       setSubmitting(true);
       await onCreateReagent(payload);
-      setSavedFeedback(`${payload.name} (${payload.clone}) — Caixa de ${boxPresentation}`);
+      setSavedFeedback(`${payload.name} (${payload.clone})`);
       resetFormFields();
     } catch (err: any) {
       setApiError(
@@ -179,21 +179,19 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
 
         <Grid2Cols>
           <FieldGroup>
-            <Label htmlFor="unitType">Tipo de Apresentação da Caixa</Label>
+            <Label htmlFor="unitType">Tipo de Consumo</Label>
             <Select
               id="unitType"
               value={unit}
               onChange={(e) => handleUnitChange(e.target.value as UnitMeasure)}
             >
-              <option value="ML">Volume em mL (12mL, 20mL, 40mL, 45mL)</option>
-              <option value="TESTS">Quantidade de Testes (50 ou 250 testes)</option>
+              <option value="ML">mL</option>
+              <option value="TESTS">Testes</option>
             </Select>
           </FieldGroup>
 
           <FieldGroup>
-            <Label htmlFor="boxPresentation">
-              {unit === 'ML' ? 'Volume por Caixa (mL)' : 'Testes por Caixa'}
-            </Label>
+            <Label htmlFor="boxPresentation">Volume</Label>
             <Select
               id="boxPresentation"
               value={boxPresentation}
@@ -201,7 +199,7 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
             >
               {currentBoxOptions.map((opt) => (
                 <option key={opt} value={opt}>
-                  Caixa com {opt}
+                  {opt}
                 </option>
               ))}
             </Select>
@@ -210,26 +208,28 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
 
         <Grid2Cols>
           <FieldGroup>
-            <Label htmlFor="monthlyConsumption">Consumo Mensal (nº de Caixas)</Label>
+            <Label htmlFor="monthlyConsumption">
+              Consumo Mensal ({unit === 'ML' ? 'em ml' : 'em testes'})
+            </Label>
             <Input
               id="monthlyConsumption"
               type="number"
               step="0.5"
               min="0"
-              placeholder="Ex: 1 (caixas/mês)"
+              placeholder={unit === 'ML' ? 'Ex: 24' : 'Ex: 100'}
               value={monthlyConsumption}
               onChange={(e) => setMonthlyConsumption(e.target.value)}
             />
           </FieldGroup>
 
           <FieldGroup>
-            <Label htmlFor="currentStock">Quantidade no Estoque (nº de Caixas)</Label>
+            <Label htmlFor="currentStock">Quantidade no Estoque (Caixas)</Label>
             <Input
               id="currentStock"
               type="number"
               step="1"
               min="0"
-              placeholder="Ex: 3 (caixas fechadas/em uso)"
+              placeholder="Ex: 2"
               value={currentStock}
               onChange={(e) => setCurrentStock(e.target.value)}
             />

@@ -94,12 +94,17 @@ export const InventoryList: React.FC<InventoryListProps> = ({
     );
 
     const detectedUnit: UnitMeasure =
-      item.unit === 'TESTS' || item.volume.toLowerCase().includes('teste') ? 'TESTS' : 'ML';
+      item.unit === 'TESTS' || item.volume === '50' || item.volume === '250' ? 'TESTS' : 'ML';
     setEditUnit(detectedUnit);
+
+    const normalizedVol = item.volume
+      .toLowerCase()
+      .replace('testes', '')
+      .trim();
 
     const validOptions: readonly string[] =
       detectedUnit === 'ML' ? ML_BOX_OPTIONS : TESTS_BOX_OPTIONS;
-    setEditVolume(validOptions.includes(item.volume) ? item.volume : validOptions[0]);
+    setEditVolume(validOptions.includes(normalizedVol) ? normalizedVol : validOptions[0]);
 
     setEditMonthlyConsumption(String(item.monthlyConsumption ?? 0));
     setEditCurrentStock(String(item.currentStock ?? 0));
@@ -157,8 +162,8 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                 <th>Reagente</th>
                 <th>Clone</th>
                 {showManufacturerCol && <th>Fabricante</th>}
-                <th>Apresentação (Caixa)</th>
-                <th>Média Consumo Mensal (Caixas)</th>
+                <th>Volume</th>
+                <th>Média de Consumo Mensal</th>
                 <th>Estoque Atual (Caixas)</th>
                 <th style={{ textAlign: 'center' }}>Ações</th>
               </tr>
@@ -189,9 +194,11 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                     <td>{item.clone}</td>
                     {showManufacturerCol && <td>{item.manufacturer}</td>}
                     <td>{item.volume || '—'}</td>
-                    <td>{item.monthlyConsumption} cx</td>
                     <td>
-                      <StockValue>{item.currentStock} cx</StockValue>
+                      {item.monthlyConsumption} {item.unit === 'TESTS' ? 'testes' : 'ml'}
+                    </td>
+                    <td>
+                      <StockValue>{item.currentStock}</StockValue>
                     </td>
                     <td>
                       <PlusMinusGroup>
@@ -363,25 +370,25 @@ export const InventoryList: React.FC<InventoryListProps> = ({
 
             <ModalGrid>
               <ModalField>
-                <label>Tipo de Apresentação</label>
+                <label>Tipo de Consumo</label>
                 <select
                   value={editUnit}
                   onChange={(e) => handleEditUnitChange(e.target.value as UnitMeasure)}
                 >
-                  <option value="ML">Volume em mL (12, 20, 40, 45mL)</option>
-                  <option value="TESTS">Testes (50 ou 250 testes)</option>
+                  <option value="ML">mL</option>
+                  <option value="TESTS">Testes</option>
                 </select>
               </ModalField>
 
               <ModalField>
-                <label>{editUnit === 'ML' ? 'Volume da Caixa' : 'Testes por Caixa'}</label>
+                <label>Volume</label>
                 <select
                   value={editVolume}
                   onChange={(e) => setEditVolume(e.target.value)}
                 >
                   {editBoxOptions.map((opt) => (
                     <option key={opt} value={opt}>
-                      Caixa com {opt}
+                      {opt}
                     </option>
                   ))}
                 </select>
@@ -390,7 +397,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
 
             <ModalGrid>
               <ModalField>
-                <label>Média Consumo Mensal (Caixas)</label>
+                <label>Consumo Mensal ({editUnit === 'ML' ? 'em ml' : 'em testes'})</label>
                 <input
                   type="number"
                   step="0.5"
@@ -401,7 +408,7 @@ export const InventoryList: React.FC<InventoryListProps> = ({
               </ModalField>
 
               <ModalField>
-                <label>Estoque Atual (Caixas)</label>
+                <label>Quantidade no Estoque (Caixas)</label>
                 <input
                   type="number"
                   step="1"

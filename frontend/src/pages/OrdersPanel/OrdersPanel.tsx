@@ -39,8 +39,8 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
       'Reagente',
       'Clone',
       'Fabricante',
-      'Apresentacao da Caixa',
-      'Media Consumo Mensal (Caixas)',
+      'Volume',
+      'Media Consumo Mensal',
       'Estoque Atual (Caixas)',
       'Quantidade a Pedir (Caixas)',
     ];
@@ -51,7 +51,7 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
       item.clone,
       item.manufacturer,
       item.volume || '-',
-      String(item.monthlyConsumption).replace('.', ','),
+      `${String(item.monthlyConsumption).replace('.', ',')} ${item.unit === 'TESTS' ? 'testes' : 'ml'}`,
       String(item.currentStock).replace('.', ','),
       String(item.suggestedOrderQty).replace('.', ','),
     ]);
@@ -95,10 +95,10 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
               <th>Código</th>
               <th>Reagente</th>
               <th>Clone</th>
-              <th>Apresentação (Caixa)</th>
-              <th>Média Consumo Mensal (Caixas)</th>
+              <th>Volume</th>
+              <th>Média Consumo Mensal</th>
               <th>Estoque Atual (Caixas)</th>
-              <th>Quantidade a Pedir (Caixas)</th>
+              <th>Caixas a Pedir</th>
             </tr>
           </thead>
           <tbody>
@@ -119,8 +119,10 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
                   </td>
                   <td>{item.clone}</td>
                   <td>{item.volume || '—'}</td>
-                  <td>{item.monthlyConsumption} cx</td>
-                  <td>{item.currentStock} cx</td>
+                  <td>
+                    {item.monthlyConsumption} {item.unit === 'TESTS' ? 'testes' : 'ml'}
+                  </td>
+                  <td>{item.currentStock}</td>
                   <td>
                     <OrderQtyBadge>{item.suggestedOrderQty} cx</OrderQtyBadge>
                   </td>
