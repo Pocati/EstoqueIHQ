@@ -1,4 +1,10 @@
-import { CreateReagentPayload, ReagentItem, StockStatus, UnitMeasure } from '../types/ihq.types';
+import {
+  CreateReagentPayload,
+  ReagentItem,
+  StockStatus,
+  UnitMeasure,
+  UpdateReagentPayload,
+} from '../types/ihq.types';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 const LOCAL_STORAGE_KEY = 'ihq_reagents_v2';
@@ -95,7 +101,7 @@ export const ihqApi = {
           clone: payload.clone,
           code: payload.code || '',
           manufacturer: payload.manufacturer || 'Dako / Agilent',
-          volume: payload.volume || '',
+          volume: payload.volume || '12 mL',
           unit: payload.unit || 'ML',
           monthly_consumption: payload.monthlyConsumption ?? 0,
           current_stock: payload.currentStock ?? 0,
@@ -114,7 +120,7 @@ export const ihqApi = {
       clone: payload.clone,
       code: payload.code || '',
       manufacturer: payload.manufacturer || 'Dako / Agilent',
-      volume: payload.volume || '',
+      volume: payload.volume || '12 mL',
       unit: payload.unit || 'ML',
       monthlyConsumption: payload.monthlyConsumption ?? 0,
       currentStock: payload.currentStock ?? 0,
@@ -122,6 +128,43 @@ export const ihqApi = {
     const next = [...items, newItem].sort((a, b) => a.name.localeCompare(b.name));
     saveLocalItems(next);
     return newItem;
+  },
+
+  async updateReagent(reagentId: string, payload: UpdateReagentPayload): Promise<ReagentItem> {
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('reagents')
+        .update({
+          name: payload.name,
+          clone: payload.clone,
+          code: payload.code || '',
+          manufacturer: payload.manufacturer,
+          volume: payload.volume,
+          unit: payload.unit,
+          monthly_consumption: payload.monthlyConsumption,
+          current_stock: payload.currentStock,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', reagentId)
+        .select()
+        .single();
+
+      if (error) throw new Error(error.message);
+      return mapRowFromSupabase(data);
+    }
+
+    const items = getLocalItems();
+    const updated = items
+      .map((item) => {
+        if (item.id !== reagentId) return item;
+        return computeDerived({
+          id: reagentId,
+          ...payload,
+        });
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    saveLocalItems(updated);
+    return updated.find((i) => i.id === reagentId)!;
   },
 
   async adjustStock(reagentId: string, delta: number): Promise<ReagentItem> {
@@ -134,7 +177,10 @@ export const ihqApi = {
 
       if (fetchErr) throw new Error(fetchErr.message);
 
-      const nextStock = Math.max(0, Number(((Number(current.current_stock) || 0) + delta).toFixed(2)));
+      const nextStock = Math.max(
+        0,
+        Number(((Number(current.current_stock) || 0) + delta).toFixed(2))
+      );
 
       const { data: updated, error: updateErr } = await supabase
         .from('reagents')

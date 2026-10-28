@@ -13,7 +13,6 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
   onBack,
   onNavigateToStock,
 }) => {
-  // Filtra apenas itens que precisam de pedido (Qtd. a Pedir > 0)
   const itemsToOrder = useMemo(
     () => reagents.filter((r) => r.suggestedOrderQty > 0),
     [reagents]
@@ -34,17 +33,16 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
     [itemsToOrder]
   );
 
-  // Gera arquivo compatível com Microsoft Excel (.csv com UTF-8 BOM e separador ';')
   const exportToExcel = (brandName: string, list: ReagentItem[]) => {
     const headers = [
       'Codigo',
       'Reagente',
       'Clone',
       'Fabricante',
-      'Volume',
-      'Media Consumo Mensal',
-      'Estoque Atual',
-      'Quantidade a Pedir',
+      'Apresentacao da Caixa',
+      'Media Consumo Mensal (Caixas)',
+      'Estoque Atual (Caixas)',
+      'Quantidade a Pedir (Caixas)',
     ];
 
     const rows = list.map((item) => [
@@ -97,10 +95,10 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
               <th>Código</th>
               <th>Reagente</th>
               <th>Clone</th>
-              <th>Volume</th>
-              <th>Média Consumo Mensal</th>
-              <th>Estoque Atual</th>
-              <th>Quantidade a Pedir</th>
+              <th>Apresentação (Caixa)</th>
+              <th>Média Consumo Mensal (Caixas)</th>
+              <th>Estoque Atual (Caixas)</th>
+              <th>Quantidade a Pedir (Caixas)</th>
             </tr>
           </thead>
           <tbody>
@@ -121,10 +119,10 @@ export const OrdersPanel: React.FC<OrdersPanelProps> = ({
                   </td>
                   <td>{item.clone}</td>
                   <td>{item.volume || '—'}</td>
-                  <td>{item.monthlyConsumption}</td>
-                  <td>{item.currentStock}</td>
+                  <td>{item.monthlyConsumption} cx</td>
+                  <td>{item.currentStock} cx</td>
                   <td>
-                    <OrderQtyBadge>{item.suggestedOrderQty}</OrderQtyBadge>
+                    <OrderQtyBadge>{item.suggestedOrderQty} cx</OrderQtyBadge>
                   </td>
                 </tr>
               ))

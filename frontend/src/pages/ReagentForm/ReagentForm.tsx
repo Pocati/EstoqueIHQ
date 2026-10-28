@@ -1,6 +1,11 @@
 import React, { useState, useRef } from 'react';
 import styled from 'styled-components';
-import { CreateReagentPayload, UnitMeasure } from '../../types/ihq.types';
+import {
+  CreateReagentPayload,
+  ML_BOX_OPTIONS,
+  TESTS_BOX_OPTIONS,
+  UnitMeasure,
+} from '../../types/ihq.types';
 
 interface ReagentFormProps {
   onBack: () => void;
@@ -19,8 +24,8 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
   const [clone, setClone] = useState('');
   const [code, setCode] = useState('');
   const [manufacturer, setManufacturer] = useState<'Dako / Agilent' | 'Roche'>('Dako / Agilent');
-  const [volumeValue, setVolumeValue] = useState('');
   const [unit, setUnit] = useState<UnitMeasure>('ML');
+  const [boxPresentation, setBoxPresentation] = useState<string>(ML_BOX_OPTIONS[0]);
   const [monthlyConsumption, setMonthlyConsumption] = useState('');
   const [currentStock, setCurrentStock] = useState('');
 
@@ -29,13 +34,18 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
   const [savedFeedback, setSavedFeedback] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
 
+  const handleUnitChange = (newUnit: UnitMeasure) => {
+    setUnit(newUnit);
+    setBoxPresentation(newUnit === 'ML' ? ML_BOX_OPTIONS[0] : TESTS_BOX_OPTIONS[0]);
+  };
+
   const resetFormFields = () => {
     setName('');
     setClone('');
     setCode('');
     setManufacturer('Dako / Agilent');
-    setVolumeValue('');
     setUnit('ML');
+    setBoxPresentation(ML_BOX_OPTIONS[0]);
     setMonthlyConsumption('');
     setCurrentStock('');
     setErrors({});
@@ -61,15 +71,12 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
 
     if (!validate()) return;
 
-    const unitText = unit === 'ML' ? 'mL' : 'testes';
-    const formattedVolume = volumeValue.trim() ? `${volumeValue.trim()} ${unitText}` : unitText;
-
     const payload: CreateReagentPayload = {
       name: name.trim(),
       clone: clone.trim(),
       code: code.trim(),
       manufacturer,
-      volume: formattedVolume,
+      volume: boxPresentation,
       unit,
       monthlyConsumption: parseFloat(monthlyConsumption) || 0,
       currentStock: parseFloat(currentStock) || 0,
@@ -78,7 +85,7 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
     try {
       setSubmitting(true);
       await onCreateReagent(payload);
-      setSavedFeedback(`${payload.name} (${payload.clone})`);
+      setSavedFeedback(`${payload.name} (${payload.clone}) — Caixa de ${boxPresentation}`);
       resetFormFields();
     } catch (err: any) {
       setApiError(
@@ -89,6 +96,8 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
       setSubmitting(false);
     }
   };
+
+  const currentBoxOptions = unit === 'ML' ? ML_BOX_OPTIONS : TESTS_BOX_OPTIONS;
 
   return (
     <PageWrapper>
@@ -168,52 +177,64 @@ export const ReagentForm: React.FC<ReagentFormProps> = ({
           </FieldGroup>
         </Grid2Cols>
 
-        <Grid3Cols>
+        <Grid2Cols>
           <FieldGroup>
-            <Label htmlFor="volumeValue">Volume</Label>
-            <VolumeRow>
-              <Input
-                id="volumeValue"
-                placeholder="Ex: 6 ou 50"
-                value={volumeValue}
-                onChange={(e) => setVolumeValue(e.target.value)}
-              />
-              <UnitSelect
-                value={unit}
-                onChange={(e) => setUnit(e.target.value as UnitMeasure)}
-              >
-                <option value="ML">mL</option>
-                <option value="TESTS">testes</option>
-              </UnitSelect>
-            </VolumeRow>
+            <Label htmlFor="unitType">Tipo de Apresentação da Caixa</Label>
+            <Select
+              id="unitType"
+              value={unit}
+              onChange={(e) => handleUnitChange(e.target.value as UnitMeasure)}
+            >
+              <option value="ML">Volume em mL (12mL, 20mL, 40mL, 45mL)</option>
+              <option value="TESTS">Quantidade de Testes (50 ou 250 testes)</option>
+            </Select>
           </FieldGroup>
 
           <FieldGroup>
-            <Label htmlFor="monthlyConsumption">Consumo Mensal</Label>
+            <Label htmlFor="boxPresentation">
+              {unit === 'ML' ? 'Volume por Caixa (mL)' : 'Testes por Caixa'}
+            </Label>
+            <Select
+              id="boxPresentation"
+              value={boxPresentation}
+              onChange={(e) => setBoxPresentation(e.target.value)}
+            >
+              {currentBoxOptions.map((opt) => (
+                <option key={opt} value={opt}>
+                  Caixa com {opt}
+                </option>
+              ))}
+            </Select>
+          </FieldGroup>
+        </Grid2Cols>
+
+        <Grid2Cols>
+          <FieldGroup>
+            <Label htmlFor="monthlyConsumption">Consumo Mensal (nº de Caixas)</Label>
             <Input
               id="monthlyConsumption"
               type="number"
-              step="0.1"
+              step="0.5"
               min="0"
-              placeholder="Ex: 6"
+              placeholder="Ex: 1 (caixas/mês)"
               value={monthlyConsumption}
               onChange={(e) => setMonthlyConsumption(e.target.value)}
             />
           </FieldGroup>
 
           <FieldGroup>
-            <Label htmlFor="currentStock">Estoque Atual</Label>
+            <Label htmlFor="currentStock">Quantidade no Estoque (nº de Caixas)</Label>
             <Input
               id="currentStock"
               type="number"
-              step="0.1"
+              step="1"
               min="0"
-              placeholder="Ex: 12"
+              placeholder="Ex: 3 (caixas fechadas/em uso)"
               value={currentStock}
               onChange={(e) => setCurrentStock(e.target.value)}
             />
           </FieldGroup>
-        </Grid3Cols>
+        </Grid2Cols>
 
         <ButtonRow>
           <SecondaryButton type="button" onClick={onBack}>
@@ -319,12 +340,6 @@ const Grid2Cols = styled.div`
   margin-bottom: 1.25rem;
 `;
 
-const Grid3Cols = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 1.25rem;
-`;
-
 const FieldGroup = styled.div`
   display: flex;
   flex-direction: column;
@@ -335,11 +350,6 @@ const Label = styled.label`
   font-weight: 600;
   color: #1e293b;
   margin-bottom: 0.4rem;
-`;
-
-const VolumeRow = styled.div`
-  display: flex;
-  gap: 0.5rem;
 `;
 
 const Input = styled.input<{ $hasError?: boolean }>`
@@ -364,16 +374,11 @@ const Select = styled.select`
   font-size: 0.95rem;
   color: #0f172a;
   background: #ffffff;
-`;
 
-const UnitSelect = styled.select`
-  padding: 0.65rem 0.75rem;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #0f172a;
-  background: #f8fafc;
+  &:focus {
+    outline: none;
+    border-color: #0284c7;
+  }
 `;
 
 const ErrorMsg = styled.span`

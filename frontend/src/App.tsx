@@ -4,7 +4,12 @@ import { Home } from './pages/Home/Home';
 import { ReagentForm } from './pages/ReagentForm/ReagentForm';
 import { InventoryList } from './pages/InventoryList/InventoryList';
 import { OrdersPanel } from './pages/OrdersPanel/OrdersPanel';
-import { CreateReagentPayload, ReagentItem, ScreenRoute } from './types/ihq.types';
+import {
+  CreateReagentPayload,
+  ReagentItem,
+  ScreenRoute,
+  UpdateReagentPayload,
+} from './types/ihq.types';
 import { ihqApi } from './services/api';
 
 export const App: React.FC = () => {
@@ -26,6 +31,11 @@ export const App: React.FC = () => {
 
   const handleCreateReagent = async (payload: CreateReagentPayload) => {
     await ihqApi.createReagent(payload);
+    await loadData();
+  };
+
+  const handleUpdateReagent = async (reagentId: string, payload: UpdateReagentPayload) => {
+    await ihqApi.updateReagent(reagentId, payload);
     await loadData();
   };
 
@@ -72,6 +82,7 @@ export const App: React.FC = () => {
           onNavigateToRegister={() => setRoute('REGISTER')}
           onNavigateToOrders={() => setRoute('ORDERS')}
           onAdjustStock={handleAdjustStock}
+          onUpdateReagent={handleUpdateReagent}
           onDeleteReagent={handleDeleteReagent}
         />
       )}

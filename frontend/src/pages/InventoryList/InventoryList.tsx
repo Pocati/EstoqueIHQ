@@ -1,6 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
-import { ReagentItem, StockStatus } from '../../types/ihq.types';
+import {
+  ML_BOX_OPTIONS,
+  ReagentItem,
+  StockStatus,
+  TESTS_BOX_OPTIONS,
+  UnitMeasure,
+  UpdateReagentPayload,
+} from '../../types/ihq.types';
 
 interface InventoryListProps {
   reagents: ReagentItem[];
@@ -8,6 +15,7 @@ interface InventoryListProps {
   onNavigateToRegister: () => void;
   onNavigateToOrders: () => void;
   onAdjustStock: (reagentId: string, delta: number) => Promise<void>;
+  onUpdateReagent: (reagentId: string, payload: UpdateReagentPayload) => Promise<void>;
   onDeleteReagent: (reagentId: string) => Promise<void>;
 }
 
@@ -19,10 +27,26 @@ export const InventoryList: React.FC<InventoryListProps> = ({
   onNavigateToRegister,
   onNavigateToOrders,
   onAdjustStock,
+  onUpdateReagent,
   onDeleteReagent,
 }) => {
   const [division, setDivision] = useState<DivisionTab>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Estado do Modal de Edição
+  const [editingItem, setEditingItem] = useState<ReagentItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editClone, setEditClone] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [editManufacturer, setEditManufacturer] = useState<'Dako / Agilent' | 'Roche'>(
+    'Dako / Agilent'
+  );
+  const [editUnit, setEditUnit] = useState<UnitMeasure>('ML');
+  const [editVolume, setEditVolume] = useState<string>(ML_BOX_OPTIONS[0]);
+  const [editMonthlyConsumption, setEditMonthlyConsumption] = useState('');
+  const [editCurrentStock, setEditCurrentStock] = useState('');
+  const [editError, setEditError] = useState<string | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const dakoItems = useMemo(
     () =>
@@ -53,10 +77,67 @@ export const InventoryList: React.FC<InventoryListProps> = ({
   const handleDecreaseStock = (item: ReagentItem) => {
     if (item.currentStock <= 0) return;
     const confirmed = window.confirm(
-      `Confirmar o descarte / baixa de 1 unidade do reagente "${item.name}" (${item.clone})?`
+      `Confirmar o descarte / baixa de 1 caixa do reagente "${item.name}" (${item.clone})?`
     );
     if (confirmed) {
       onAdjustStock(item.id, -1);
+    }
+  };
+
+  const openEditModal = (item: ReagentItem) => {
+    setEditingItem(item);
+    setEditName(item.name);
+    setEditClone(item.clone);
+    setEditCode(item.code || '');
+    setEditManufacturer(
+      item.manufacturer.toLowerCase().includes('roche') ? 'Roche' : 'Dako / Agilent'
+    );
+
+    const detectedUnit: UnitMeasure =
+      item.unit === 'TESTS' || item.volume.toLowerCase().includes('teste') ? 'TESTS' : 'ML';
+    setEditUnit(detectedUnit);
+
+    const validOptions: readonly string[] =
+      detectedUnit === 'ML' ? ML_BOX_OPTIONS : TESTS_BOX_OPTIONS;
+    setEditVolume(validOptions.includes(item.volume) ? item.volume : validOptions[0]);
+
+    setEditMonthlyConsumption(String(item.monthlyConsumption ?? 0));
+    setEditCurrentStock(String(item.currentStock ?? 0));
+    setEditError(null);
+  };
+
+  const handleEditUnitChange = (newUnit: UnitMeasure) => {
+    setEditUnit(newUnit);
+    setEditVolume(newUnit === 'ML' ? ML_BOX_OPTIONS[0] : TESTS_BOX_OPTIONS[0]);
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingItem) return;
+    setEditError(null);
+
+    if (!editName.trim() || !editClone.trim()) {
+      setEditError('Nome do reagente e Clone são obrigatórios.');
+      return;
+    }
+
+    try {
+      setSavingEdit(true);
+      await onUpdateReagent(editingItem.id, {
+        name: editName.trim(),
+        clone: editClone.trim(),
+        code: editCode.trim(),
+        manufacturer: editManufacturer,
+        volume: editVolume,
+        unit: editUnit,
+        monthlyConsumption: parseFloat(editMonthlyConsumption) || 0,
+        currentStock: parseFloat(editCurrentStock) || 0,
+      });
+      setEditingItem(null);
+    } catch (err: any) {
+      setEditError(err.message || 'Erro ao atualizar reagente.');
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -76,10 +157,10 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                 <th>Reagente</th>
                 <th>Clone</th>
                 {showManufacturerCol && <th>Fabricante</th>}
-                <th>Volume</th>
-                <th>Média de Consumo Mensal</th>
-                <th>Estoque Atual</th>
-                <th style={{ textAlign: 'center' }}>Consumo</th>
+                <th>Apresentação (Caixa)</th>
+                <th>Média Consumo Mensal (Caixas)</th>
+                <th>Estoque Atual (Caixas)</th>
+                <th style={{ textAlign: 'center' }}>Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -108,16 +189,16 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                     <td>{item.clone}</td>
                     {showManufacturerCol && <td>{item.manufacturer}</td>}
                     <td>{item.volume || '—'}</td>
-                    <td>{item.monthlyConsumption}</td>
+                    <td>{item.monthlyConsumption} cx</td>
                     <td>
-                      <StockValue>{item.currentStock}</StockValue>
+                      <StockValue>{item.currentStock} cx</StockValue>
                     </td>
                     <td>
                       <PlusMinusGroup>
                         <SymbolBtn
                           type="button"
                           $type="minus"
-                          title="Dar baixa / descartar 1 unidade"
+                          title="Dar baixa / descartar 1 caixa"
                           onClick={() => handleDecreaseStock(item)}
                         >
                           −
@@ -125,11 +206,18 @@ export const InventoryList: React.FC<InventoryListProps> = ({
                         <SymbolBtn
                           type="button"
                           $type="plus"
-                          title="Adicionar 1 unidade"
+                          title="Adicionar 1 caixa"
                           onClick={() => onAdjustStock(item.id, 1)}
                         >
                           +
                         </SymbolBtn>
+                        <EditBtn
+                          type="button"
+                          title="Editar informações do reagente"
+                          onClick={() => openEditModal(item)}
+                        >
+                          ✏️
+                        </EditBtn>
                         <DeleteBtn
                           type="button"
                           title="Excluir reagente do cadastro"
@@ -156,6 +244,8 @@ export const InventoryList: React.FC<InventoryListProps> = ({
       </SectionBlock>
     );
   };
+
+  const editBoxOptions = editUnit === 'ML' ? ML_BOX_OPTIONS : TESTS_BOX_OPTIONS;
 
   return (
     <PageWrapper>
@@ -216,6 +306,123 @@ export const InventoryList: React.FC<InventoryListProps> = ({
 
       {division === 'DAKO' && renderSpreadsheet('Reagentes Dako / Agilent', dakoItems, false)}
       {division === 'ROCHE' && renderSpreadsheet('Reagentes Roche', rocheItems, false)}
+
+      {/* Modal de Edição Completa */}
+      {editingItem && (
+        <ModalOverlay onClick={() => setEditingItem(null)}>
+          <ModalForm onClick={(e) => e.stopPropagation()} onSubmit={handleSaveEdit}>
+            <ModalTitle>Editar Reagente</ModalTitle>
+
+            {editError && <ModalError>{editError}</ModalError>}
+
+            <ModalGrid>
+              <ModalField>
+                <label>Nome do Reagente *</label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                />
+              </ModalField>
+
+              <ModalField>
+                <label>Clone *</label>
+                <input
+                  type="text"
+                  value={editClone}
+                  onChange={(e) => setEditClone(e.target.value)}
+                  required
+                />
+              </ModalField>
+            </ModalGrid>
+
+            <ModalGrid>
+              <ModalField>
+                <label>Código (Pedido)</label>
+                <input
+                  type="text"
+                  value={editCode}
+                  onChange={(e) => setEditCode(e.target.value)}
+                />
+              </ModalField>
+
+              <ModalField>
+                <label>Fabricante</label>
+                <select
+                  value={editManufacturer}
+                  onChange={(e) =>
+                    setEditManufacturer(e.target.value as 'Dako / Agilent' | 'Roche')
+                  }
+                >
+                  <option value="Dako / Agilent">Dako / Agilent</option>
+                  <option value="Roche">Roche</option>
+                </select>
+              </ModalField>
+            </ModalGrid>
+
+            <ModalGrid>
+              <ModalField>
+                <label>Tipo de Apresentação</label>
+                <select
+                  value={editUnit}
+                  onChange={(e) => handleEditUnitChange(e.target.value as UnitMeasure)}
+                >
+                  <option value="ML">Volume em mL (12, 20, 40, 45mL)</option>
+                  <option value="TESTS">Testes (50 ou 250 testes)</option>
+                </select>
+              </ModalField>
+
+              <ModalField>
+                <label>{editUnit === 'ML' ? 'Volume da Caixa' : 'Testes por Caixa'}</label>
+                <select
+                  value={editVolume}
+                  onChange={(e) => setEditVolume(e.target.value)}
+                >
+                  {editBoxOptions.map((opt) => (
+                    <option key={opt} value={opt}>
+                      Caixa com {opt}
+                    </option>
+                  ))}
+                </select>
+              </ModalField>
+            </ModalGrid>
+
+            <ModalGrid>
+              <ModalField>
+                <label>Média Consumo Mensal (Caixas)</label>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0"
+                  value={editMonthlyConsumption}
+                  onChange={(e) => setEditMonthlyConsumption(e.target.value)}
+                />
+              </ModalField>
+
+              <ModalField>
+                <label>Estoque Atual (Caixas)</label>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={editCurrentStock}
+                  onChange={(e) => setEditCurrentStock(e.target.value)}
+                />
+              </ModalField>
+            </ModalGrid>
+
+            <ModalActions>
+              <CancelBtn type="button" onClick={() => setEditingItem(null)}>
+                Cancelar
+              </CancelBtn>
+              <SaveBtn type="submit" disabled={savingEdit}>
+                {savingEdit ? 'Salvando...' : 'Salvar Alterações'}
+              </SaveBtn>
+            </ModalActions>
+          </ModalForm>
+        </ModalOverlay>
+      )}
     </PageWrapper>
   );
 };
@@ -372,17 +579,17 @@ const PlusMinusGroup = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.4rem;
 `;
 
 const SymbolBtn = styled.button<{ $type: 'plus' | 'minus' }>`
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 8px;
   border: 1px solid ${({ $type }) => ($type === 'minus' ? '#fecaca' : '#a7f3d0')};
   background: ${({ $type }) => ($type === 'minus' ? '#fef2f2' : '#ecfdf5')};
   color: ${({ $type }) => ($type === 'minus' ? '#dc2626' : '#059669')};
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: 800;
   line-height: 1;
   cursor: pointer;
@@ -395,17 +602,33 @@ const SymbolBtn = styled.button<{ $type: 'plus' | 'minus' }>`
   }
 `;
 
+const EditBtn = styled.button`
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+  background: #f0f9ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background: #e0f2fe;
+  }
+`;
+
 const DeleteBtn = styled.button`
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   border: 1px solid #e2e8f0;
   background: #ffffff;
   color: #94a3b8;
   font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
-  margin-left: 0.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -414,5 +637,101 @@ const DeleteBtn = styled.button`
     color: #dc2626;
     border-color: #fecaca;
     background: #fef2f2;
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+`;
+
+const ModalForm = styled.form`
+  background: #ffffff;
+  border-radius: 14px;
+  max-width: 580px;
+  width: 100%;
+  padding: 1.75rem;
+  box-shadow: 0 20px 30px -10px rgba(15, 23, 42, 0.25);
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0 0 1.25rem 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #0f172a;
+`;
+
+const ModalError = styled.div`
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+`;
+
+const ModalGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+`;
+
+const ModalField = styled.div`
+  display: flex;
+  flex-direction: column;
+
+  label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 0.35rem;
+  }
+
+  input,
+  select {
+    padding: 0.6rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    font-size: 0.92rem;
+    color: #0f172a;
+    background: #ffffff;
+  }
+`;
+
+const ModalActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+`;
+
+const CancelBtn = styled.button`
+  padding: 0.65rem 1.15rem;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 600;
+  cursor: pointer;
+`;
+
+const SaveBtn = styled.button`
+  padding: 0.65rem 1.35rem;
+  border-radius: 8px;
+  border: none;
+  background: #0284c7;
+  color: #ffffff;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: #0369a1;
   }
 `;
